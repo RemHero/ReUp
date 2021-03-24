@@ -16,7 +16,7 @@
 #include "semaphore.h"
 #include <queue>
 #include <stack>
-
+#define EAGAIN 11
 typedef void* (*WorkFunc)(void*);
 typedef void* Argument;
 

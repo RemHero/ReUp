@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <strings.h>
+#include <cstring>
 
 #include "sudoku.h"
 

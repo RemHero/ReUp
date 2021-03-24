@@ -7,11 +7,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
-#include "algorithm/sudoku.h"
-#include "thread_pool2/queue_pool.h"
+#include "sudoku.h"
+#include "queue_pool.h"
 
 using namespace  std;
-#define B 100
+#define B 10
 mutex __mutex;
 mutex __mutex2;
 bool buffer[B]={false};//标志位
@@ -64,7 +64,7 @@ void* LHZFUN(void* arg){
         for(int i=0;i<N;i++) {
             boardW[i]=p->Tboard[i];
         }
-        putAns(p->num,boardW);
+        //putAns(p->num,boardW);
 //        if(!solved()){
 //            printf("work wrong!\n");
 //            assert(0);
@@ -82,12 +82,11 @@ void* getinput(void* arg){
     //锁suspend
     string fname;
     while(scanf("%s",&fname)){
-        string path="D:/ProgramFiles (x86)/JetBrains/Code/test/"+fname;
-        fpT = fopen(path,"r",stdin);
+        fpT = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000","r",stdin);
     }
 }
 
-void creatInput(int ){
+void creatInput(){
     if(!pthread_create(&inputT,NULL,getinput,NULL)){
         printf("create thread wrong!\n");
     }
@@ -95,14 +94,15 @@ void creatInput(int ){
 
 
 
-int main()
+int main(int argc, char* argv[])
 {
-    FILE* fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
+    FILE* fp = fopen(argv[1], "r");
+//    FILE* fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
     if(fp==NULL) printf("wrong! get file fail.\n");
     char puzzle[128];
     int total_solved = 0;
     long long total = 0;
-    ThreadPool p(700);
+    ThreadPool p(7);
     p.run();
     int PT=0;
     int64_t start = now();

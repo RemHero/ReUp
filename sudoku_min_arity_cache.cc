@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <strings.h>
-
+#include <cstring>
 #include <algorithm>
 #include <mutex>
 
