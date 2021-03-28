@@ -65,10 +65,10 @@ void* LHZFUN(void* arg){
             boardW[i]=p->Tboard[i];
         }
         //putAns(p->num,boardW);
-//        if(!solved()){
-//            printf("work wrong!\n");
-//            assert(0);
-//        }
+        if(!solved()){
+          printf("work wrong!\n");
+           assert(0);
+        }
         __mutex2.unlock();
     }
     else{
@@ -96,33 +96,39 @@ void creatInput(){
 
 int main(int argc, char* argv[])
 {
-    FILE* fp = fopen(argv[1], "r");
-//    FILE* fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
-    if(fp==NULL) printf("wrong! get file fail.\n");
-    char puzzle[128];
+    int64_t start = now();
     int total_solved = 0;
     long long total = 0;
-    ThreadPool p(7);
-    p.run();
-    int PT=0;
-    int64_t start = now();
-    while (fgets(puzzle, sizeof puzzle, fp) != NULL) {
-        if (strlen(puzzle) >= N) {
-            PT=(PT+1)%B;
-            __mutex.lock();
-            T[PT].num=total;
-            ++total;
-            input(puzzle);
-            init_cache();
-            T[PT].getT();
-            p.dispatch(LHZFUN, &T[PT]);
-            if(total%B==0){
-                p.sync();//分步读入文件
-            }
-            __mutex.unlock();
-        }
+    for(int j=1;j<argc;j++){
+    	FILE* fp = fopen(argv[j], "r");
+	//    FILE* fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
+	    if(fp==NULL) printf("wrong! get file fail.\n");
+	    char puzzle[128];
+	    ThreadPool p(7);
+	    p.run();
+	    int PT=0;
+	    
+	    while (fgets(puzzle, sizeof puzzle, fp) != NULL) {
+		if (strlen(puzzle) >= N) {
+		    PT=(PT+1)%B;
+		    __mutex.lock();
+		    T[PT].num=total;
+		    ++total;
+		    input(puzzle);
+		    init_cache();
+		    T[PT].getT();
+		    p.dispatch(LHZFUN, &T[PT]);
+		    if(total%B==0){
+		        p.sync();//分步读入文件
+		    }
+		    __mutex.unlock();
+		}
+	    }
+	    p.sync(); 
+	    int fclose(FILE *fp);   
+
     }
-    p.sync();
+    
     int64_t end = now();
     delete T;
     double sec = (end-start)/1000000.0;
