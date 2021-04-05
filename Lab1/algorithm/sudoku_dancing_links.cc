@@ -262,7 +262,6 @@ bool solve_sudoku_dancing_links(int Tboard[])
   Dance d(Tboard);
 //    __mutex.unlock();
     if(d.solve()){
-
         return true;
     }
     return false;

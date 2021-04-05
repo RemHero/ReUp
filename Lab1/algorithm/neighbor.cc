@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <strings.h>
 #include <cstring>
-
 #include "sudoku.h"
 
 #include <algorithm>

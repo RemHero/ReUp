@@ -6,14 +6,20 @@
 #include <sys/time.h>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <semaphore.h>
 #include <mutex>
-#include "sudoku.h"
-#include "queue_pool.h"
+#include "algorithm/sudoku.h"
+#include "thread_pool/queue_pool.h"
+#include "fileReader/fileReader.hpp"
 
 using namespace  std;
 #define B 10
+sem_t IOsem;
+
 mutex __mutex;
 mutex __mutex2;
+mutex __mutex3;
 bool buffer[B]={false};//标志位
 int AnsBuffer[B][81]={0};//输出缓存，大小肯定要大于线程个数
 long long posi=0;
@@ -56,19 +62,21 @@ void putAns(int n,int ans[]){
     }
 }
 
-
+int count=0;
 void* LHZFUN(void* arg){
+//    cout << "1:"<<count++ << endl;
     argT* p=(argT*) arg;
     if (solve_sudoku_dancing_links(p->Tboard)){
+//        cout << "1.1:"<<count++ << endl;
         __mutex2.lock();
         for(int i=0;i<N;i++) {
             boardW[i]=p->Tboard[i];
         }
-        //putAns(p->num,boardW);
-//        if(!solved()){
-//            printf("work wrong!\n");
-//            assert(0);
-//        }
+        putAns(p->num,boardW);
+        if(!solved()){
+            printf("work wrong!\n");
+            assert(0);
+        }
         __mutex2.unlock();
     }
     else{
@@ -78,58 +86,96 @@ void* LHZFUN(void* arg){
     return 0;
 }
 
+queue<string> filenameBuffer;
+exclusiveLock filenameLock;
 void* getinput(void* arg){
     //锁suspend
-    string fname;
-    while(scanf("%s",&fname)){
-        fpT = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000","r",stdin);
+    string file_path;
+//    __mutex3.lock();
+    while(cin >> file_path)
+    {
+//        __mutex3.unlock();
+        cout << file_path << "------------\n";
+        filenameLock.get();
+        filenameBuffer.push(file_path);
+        filenameLock.release();
+        sem_post(&IOsem);
     }
+
+    return 0;
 }
 
 void creatInput(){
-    if(!pthread_create(&inputT,NULL,getinput,NULL)){
+    if(pthread_create(&inputT,NULL,getinput,NULL)){
         printf("create thread wrong!\n");
     }
 }
 
 
 
-int main(int argc, char* argv[])
-{
-    FILE* fp = fopen(argv[1], "r");
-//    FILE* fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
-    if(fp==NULL) printf("wrong! get file fail.\n");
+int main(int argc,char* argv[]){
+    FILE* fp=NULL;
+//    FILE* fp = fopen(argv[1], "r");
+//    fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
+//    if(fp==NULL) printf("wrong! get file fail.\n");
+
+    if (sem_init(&IOsem,0,0)) {
+        printf("Semaphore initialization failed!!\n");
+        exit(EXIT_FAILURE);
+    }
+
     char puzzle[128];
     int total_solved = 0;
     long long total = 0;
-    ThreadPool p(7);
+    creatInput();
+    ThreadPool p(70);
     p.run();
     int PT=0;
-    int64_t start = now();
-    while (fgets(puzzle, sizeof puzzle, fp) != NULL) {
-        if (strlen(puzzle) >= N) {
-            PT=(PT+1)%B;
-            __mutex.lock();
-            T[PT].num=total;
-            ++total;
-            input(puzzle);
-            init_cache();
-            T[PT].getT();
-            p.dispatch(LHZFUN, &T[PT]);
-            if(total%B==0){
-                p.sync();//分步读入文件
+    while(1) {
+        sem_wait(&IOsem);
+        string file_path;
+        if (!filenameBuffer.empty()) {
+            filenameLock.get();
+            file_path = filenameBuffer.front();
+            filenameBuffer.pop();
+            fp = fopen(file_path.c_str(), "r");
+            filenameLock.release();
+        }
+        if (fp != NULL) {
+            int64_t start = now();
+            while (fgets(puzzle, sizeof puzzle, fp) != NULL) {
+                if (strlen(puzzle) >= N) {
+                    PT = (PT + 1) % B;
+                    __mutex.lock();
+                    T[PT].num = total;
+                    ++total;
+                    input(puzzle);
+                    init_cache();
+                    T[PT].getT();
+                    p.dispatch(LHZFUN, &T[PT]);
+                    if (total % B == 0) {
+                        p.sync();//分步读入文件
+                    }
+                    __mutex.unlock();
+                }
             }
-            __mutex.unlock();
+            p.sync();
+            fp = NULL;
+            int64_t end = now();
+            double sec = (end - start) / 1000000.0;
+            printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
+            total=0;
+            count=0;
+        }else{
+            printf("access of file failed!");
+            delete T;
+            exit(0);
         }
     }
-    p.sync();
-    int64_t end = now();
     delete T;
-    double sec = (end-start)/1000000.0;
-    printf("%f sec %f ms each %d\n", sec, 1000*sec/total, total_solved);
     return 0;
 }
-
+//D:/Desktop/test1000
 
 
 
