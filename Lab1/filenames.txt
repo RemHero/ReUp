@@ -1,0 +1,10 @@
+./test1000.test
+./test2000.test
+./test4000.test
+./test2.test
+./test16.test
+./test32000.test
+./test64000.test
+./test128000.test
+./test256000.test
+./test512000.test
