@@ -14,7 +14,7 @@
 #include "fileReader/fileReader.hpp"
 
 using namespace  std;
-#define B 10
+#define B 1000
 sem_t IOsem;
 
 mutex __mutex;
@@ -95,7 +95,7 @@ void* getinput(void* arg){
     while(cin >> file_path)
     {
 //        __mutex3.unlock();
-        cout << file_path << "------------\n";
+        //cout << file_path << "------------\n";
         filenameLock.get();
         filenameBuffer.push(file_path);
         filenameLock.release();
