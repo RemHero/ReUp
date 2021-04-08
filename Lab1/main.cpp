@@ -71,7 +71,7 @@ int count=0;
 void* LHZFUN(void* arg){
 //    cout << "1:"<<count++ << endl;
     argT* p=(argT*) arg;
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &set[(p->num)%cpus]);
+    //pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &set[(p->num)%cpus]);
     if (solve_sudoku_dancing_links(p->Tboard)){
 //        cout << "1.1:"<<count++ << endl;
         __mutex2.lock();
@@ -124,13 +124,14 @@ int main(int argc,char* argv[]){
 //    FILE* fp = fopen(argv[1], "r");
 //    fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
 //    if(fp==NULL) printf("wrong! get file fail.\n");
+    /*
     cpus = sysconf(_SC_NPROCESSORS_CONF);//get the num of the CPU
     for (int i=0; i<cpus; i++)
     {
         CPU_SET(i, &set[i]);
     }
-cout << "cpu num " << cpus << endl; 
-
+    cout << "cpu num " << cpus << endl; 
+*/
     if (sem_init(&IOsem,0,0)) {
         printf("Semaphore initialization failed!!\n");
         exit(EXIT_FAILURE);
@@ -175,7 +176,7 @@ cout << "cpu num " << cpus << endl;
             fp = NULL;
             int64_t end = now();
             double sec = (end - start) / 1000000.0;
-            //printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
+            printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
             total=0;
             count=0;
         }else{
