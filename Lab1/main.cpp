@@ -9,12 +9,17 @@
 #include <fstream>
 #include <semaphore.h>
 #include <mutex>
+#include <sched.h>
+#include <pthread.h>
+#include <unistd.h>
 #include "algorithm/sudoku.h"
 #include "thread_pool/queue_pool.h"
 #include "fileReader/fileReader.hpp"
 
 using namespace  std;
 #define B 1000
+int cpus;
+cpu_set_t set[20];
 sem_t IOsem;
 
 mutex __mutex;
@@ -57,7 +62,7 @@ void putAns(int n,int ans[]){
     for(int i=0;i<81;i++) AnsBuffer[tk][i]=ans[i];//这里的常数开销能否减小？？
     while(buffer[posi]){
         buffer[posi]=false;//基本运算
-        outputAns(AnsBuffer[posi]);
+//        outputAns(AnsBuffer[posi]);
         posi=(posi+1)%B;
     }
 }
@@ -66,6 +71,7 @@ int count=0;
 void* LHZFUN(void* arg){
 //    cout << "1:"<<count++ << endl;
     argT* p=(argT*) arg;
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &set[(p->num)%cpus]);
     if (solve_sudoku_dancing_links(p->Tboard)){
 //        cout << "1.1:"<<count++ << endl;
         __mutex2.lock();
@@ -118,6 +124,12 @@ int main(int argc,char* argv[]){
 //    FILE* fp = fopen(argv[1], "r");
 //    fp = freopen("D:/ProgramFiles (x86)/JetBrains/Code/test/test1000", "r",stdin);
 //    if(fp==NULL) printf("wrong! get file fail.\n");
+    cpus = sysconf(_SC_NPROCESSORS_CONF);//get the num of the CPU
+    for (int i=0; i<cpus; i++)
+    {
+        CPU_SET(i, &set[i]);
+    }
+cout << "cpu num " << cpus << endl; 
 
     if (sem_init(&IOsem,0,0)) {
         printf("Semaphore initialization failed!!\n");
@@ -128,7 +140,7 @@ int main(int argc,char* argv[]){
     int total_solved = 0;
     long long total = 0;
     creatInput();
-    ThreadPool p(70);
+    ThreadPool p(200);
     p.run();
     int PT=0;
     while(1) {
