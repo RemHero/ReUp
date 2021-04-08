@@ -17,7 +17,7 @@
 #include "fileReader/fileReader.hpp"
 
 using namespace  std;
-#define B 1000
+#define B 10000
 int cpus;
 cpu_set_t set[20];
 sem_t IOsem;
@@ -141,7 +141,7 @@ int main(int argc,char* argv[]){
     int total_solved = 0;
     long long total = 0;
     creatInput();
-    ThreadPool p(200);
+    ThreadPool p(7);
     p.run();
     int PT=0;
     while(1) {
