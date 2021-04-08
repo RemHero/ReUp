@@ -175,7 +175,7 @@ cout << "cpu num " << cpus << endl;
             fp = NULL;
             int64_t end = now();
             double sec = (end - start) / 1000000.0;
-            printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
+            //printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
             total=0;
             count=0;
         }else{
