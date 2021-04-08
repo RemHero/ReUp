@@ -46,3 +46,5 @@ LAB1基础版本无误，并更新至master，此版本非linux。
 学习了shell脚本的有关知识。借鉴学长的代码，尝试使用shell代替人工进行多输入文件代码正确性的测试
 以及尝试使用python中的工具进行绘图
 2021/4/8--LHZ
+增加了线程亲和性，使用pthread_setaffinity_np函数绑定CPU
+希望性能会有提高
