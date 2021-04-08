@@ -47,4 +47,6 @@ LAB1基础版本无误，并更新至master，此版本非linux。
 以及尝试使用python中的工具进行绘图
 2021/4/8--LHZ
 增加了线程亲和性，使用pthread_setaffinity_np函数绑定CPU
+其实要真正发挥CPU的性能，应该先进行CPU隔离，在进行CPU绑定，但是我不会CPU隔离
+因为那样好麻烦，还要重启虚拟机，懒
 希望性能会有提高
