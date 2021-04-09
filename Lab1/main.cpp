@@ -175,12 +175,13 @@ int main(int argc,char* argv[]){
                 }
             }
             p.sync();
-            fp = NULL;
+            fclose(fp);
             //int64_t end = now();
             //double sec = (end - start) / 1000000.0;
             //printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
             total=0;
             count=0;
+            posi=0;
         }else{
             printf("access of file failed!");
             delete T;
@@ -191,6 +192,18 @@ int main(int argc,char* argv[]){
     return 0;
 }
 //D:/Desktop/test1000
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
