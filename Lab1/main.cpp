@@ -18,8 +18,8 @@
 
 using namespace  std;
 #define B 10000
-int cpus;
-cpu_set_t set[20];
+//int cpus;
+//cpu_set_t set[20];
 sem_t IOsem;
 
 mutex __mutex;
@@ -176,8 +176,8 @@ int main(int argc,char* argv[]){
             }
             p.sync();
             fp = NULL;
-            int64_t end = now();
-            double sec = (end - start) / 1000000.0;
+            //int64_t end = now();
+            //double sec = (end - start) / 1000000.0;
             //printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
             total=0;
             count=0;
@@ -191,22 +191,6 @@ int main(int argc,char* argv[]){
     return 0;
 }
 //D:/Desktop/test1000
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
