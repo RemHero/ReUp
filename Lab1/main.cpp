@@ -62,7 +62,7 @@ void putAns(int n,int ans[]){
     for(int i=0;i<81;i++) AnsBuffer[tk][i]=ans[i];//这里的常数开销能否减小？？
     while(buffer[posi]){
         buffer[posi]=false;//基本运算
-//        outputAns(AnsBuffer[posi]);
+        outputAns(AnsBuffer[posi]);
         posi=(posi+1)%B;
     }
 }
@@ -79,10 +79,12 @@ void* LHZFUN(void* arg){
             boardW[i]=p->Tboard[i];
         }
         putAns(p->num,boardW);
+        /*
         if(!solved()){
             printf("work wrong!\n");
             assert(0);
         }
+        */
         __mutex2.unlock();
     }
     else{
@@ -176,7 +178,7 @@ int main(int argc,char* argv[]){
             fp = NULL;
             int64_t end = now();
             double sec = (end - start) / 1000000.0;
-            printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
+            //printf("%f sec %f ms each %d\n", sec, 1000 * sec / total, total_solved);
             total=0;
             count=0;
         }else{
