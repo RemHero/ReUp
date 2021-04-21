@@ -1,5 +1,5 @@
-#ifndef TCP_CLIENT_H
-#define TCP_CLIENT_H
+#ifndef HTTP_H
+#define HTTP_H
 
 #include <iostream>
 #include <stdio.h>
@@ -13,24 +13,51 @@
 #include <netdb.h>
 #include <netdb.h> 
 #include <vector>
+#include "TCPServer.h"
 
 using namespace std;
+struct Message{
+	string type;
+	string html;
+}
 
-class TCPClient
+
+
+class HTTP
 {
   private:
-    int sock;
-    std::string address;
-    int port;
-    struct sockaddr_in server;
-
+	
   public:
-    TCPClient();
-    bool setup(string address, int port);
-    bool Send(string data);
-    string receive(int size = 4096);
-    string read();
-    void exit();
+	setHTTP(char **argv);
+	getCon();
 };
 
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

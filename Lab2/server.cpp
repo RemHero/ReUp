@@ -1,15 +1,29 @@
 #include <iostream>
 #include <csignal>
 #include <ctime>
-#include "TCPServer.h"
+#include "global.h"
+#include "queue_pool.h"
 #include "TCPServer.h"
 using namespace std;
 #define B 1
+struct T{
+};
+T* t=new T;
+
+int R=8;
+int R1=1;
+int W=1;
+int O1=1;
+int O2=1;
+
 sem_t ROsem;
+pthread_mutex_t mutex1;
 TCPServer tcp;
 pthread_t msg1[MAX_CLIENT];
 int num_message = 0;
 int time_send   = 1;
+vector<descript_socket*> descALL;
+ThreadPool po2;
 
 void close_app(int s) {
     tcp.closed();
@@ -155,59 +169,65 @@ string sendCM(struct descript_socket *desc){
 void * send_client(void * m) {
 	struct argT *arg=(struct argT*) m;
     struct descript_socket *desc =  (struct descript_socket*)(arg->desc);
-    while(1) {
-        if(!tcp.is_online() && tcp.get_last_closed_sockets() == desc->id) {
-            cerr << "Connessione chiusa: stop send_clients( id:" << desc->id << " ip:" << desc->ip << " )"<< endl;
-            break;
-        }
+    // while(1) {
+        // if(!tcp.is_online() && tcp.get_last_closed_sockets() == desc->id) {
+        //     cerr << "Connessione chiusa: stop send_clients( id:" << desc->id << " ip:" << desc->ip << " )"<< endl;
+        //     break;
+        // }//这部分是对连接的持久性进行测试，过于高端，实验用不上，咱直接发送，鲁棒性永远滴神
         
         string date=sendCM(desc);
         tcp.Send(date, desc->id);
-        sem_post(&ROsem);
-        sleep(time_send);
-    }
-    pthread_exit(NULL);
+        //sem_post(&ROsem);
+        //sleep(time_send);
+    // }
+    free(desc);
+    cerr << "-------------------2" << endl;
+    //pthread_exit(NULL);
     return 0;
 }
 
-void * received(void * m)
+void * received(void * m)//之后的优化可以考虑一次分配几个任务!!!
 {
-    pthread_detach(pthread_self());
-    vector<descript_socket*> desc;
-    while(1)
-    {
-        desc = tcp.getMessage();
-
-        for(unsigned int i = 0; i < desc.size(); i++) {
-            if( desc[i]->message != "" )
-            {
-            	
-                if(!desc[i]->enable_message_runtime)
+    //pthread_detach(pthread_self());//这里不需要，我们用的是线程池
+    while(1){
+        sem_wait(&ROsem);
+        queue<descript_socket*> descT;
+        pthread_mutex_lock(&mutex1);
+        descT = tcp.getMessage();
+        pthread_mutex_unlock(&mutex1);
+        while(!descT.empty()) {
+            descript_socket* desc=descT.front();
+            descT.pop();
+                if(!desc->enable_message_runtime)
                 {
-                    desc[i]->enable_message_runtime = true;
-					T->desc=desc[i];
-					T->message=desc[i]->message;
-                    if( pthread_create(&msg1[num_message], NULL, send_client, (void *) T) == 0) {
-                        cerr << "ATTIVA THREAD INVIO MESSAGGI" << endl;
-                    }
-                    num_message++;
+                    desc->enable_message_runtime = true;
+					T->desc=desc;
+					T->message=desc->message;
+                    //descALL.push_back(desc[i]);
+                    po2.dispatch(send_client,(void *) T);
+                    // if( pthread_create(&msg1[num_message], NULL, send_client, (void *) T) == 0) {
+                    //     cerr << "ATTIVA THREAD INVIO MESSAGGI" << endl;
+                    // }
                     // start message background thread
                 }
 
-                //cout << "-----------------------------------\n"
-                
-                cout << "id:      " << desc[i]->id      << endl
-                     << "ip:      " << desc[i]->ip      << endl
-                     << "message: " << desc[i]->message << endl
-                     << "socket:  " << desc[i]->socket  << endl
-                     << "enable:  " << desc[i]->enable_message_runtime << endl;
-                sem_wait(&ROsem);
-                tcp.clean(i);
-            }
+                cout << "id:      " << desc->id      << endl
+                     << "ip:      " << desc->ip      << endl
+                     << "message: " << desc->message << endl
+                     << "socket:  " << desc->socket  << endl
+                     << "enable:  " << desc->enable_message_runtime << endl;
+                //sem_wait(&ROsem);
+                //tcp.clean(i);
         }
-        usleep(1000);
     }
     return 0;
+}
+
+void* LHZFUN(void *arg){
+    while(1){//accepted()如果没有接受到连接请求，则会自己休眠，所以直接while(1)即可
+    cerr << "-------------------1" << endl;
+        tcp.accepted();
+    }
 }
 
 int main(int argc, char **argv)
@@ -220,25 +240,34 @@ int main(int argc, char **argv)
         printf("Semaphore initialization failed!!\n");
         exit(EXIT_FAILURE);
     }
-    /*
-    if(argc == 3)
-        time_send = atoi(argv[2]);
-    */
-    std::signal(SIGINT, close_app);
+    
 
+    std::signal(SIGINT, close_app);
+    pthread_mutex_init(&mutex1,NULL);
+    O2=atoi(argv[6]);
+    ThreadPool po1(O1);
+    ThreadPool pw(W);
+    ThreadPool pr(R);
+    po2.setNum(O2);
+	pr.run();po1.run();po2.run();pw.run();
     pthread_t msg;
     vector<int> opts = { SO_REUSEPORT, SO_REUSEADDR };
-    //cout << argv[4] << endl;
+
+
     if( tcp.setup(atoi(argv[4]),opts) == 0) {
-        if( pthread_create(&msg, NULL, received, (void *)0) == 0)
-        {
-            while(1) {
-                tcp.accepted();
-                cerr << "Accepted" << endl;
-            }
+        for(int i=0;i<O1;i++){
+            po1.dispatch(received,(void *)0);
+        }  
+        for(int i=0;i<R;i++){
+            pr.dispatch(LHZFUN,(void*)0);
         }
+        cerr << "Accepted" << endl;
+        string cmd;
+        cin >> cmd;//cin阻塞
+        if(cmd=="quit") return 0;
     }
     else
         cerr << "Errore apertura socket" << endl;
+    cerr << "-------------------" << endl;
     return 0;
 }

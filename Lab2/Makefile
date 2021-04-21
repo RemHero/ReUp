@@ -1,2 +1,11 @@
-all: 
-	g++ -Wall -o httpserver server.cpp -I./src/ ./src/TCPServer.cpp ./src/TCPClient.cpp -std=c++11 -lpthread
+CXXFLAGS+=-O2 -ggdb -DDEBUG
+CXXFLAGS+=-Wall -Wextra
+
+all: httpserver
+
+httpserver:global.h queue_pool.cpp server.cpp TCPServer.cpp
+
+	g++  -O2 -o $@ $^ -lpthread
+
+clean: 
+	rm httpserver
