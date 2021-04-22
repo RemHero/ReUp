@@ -48,7 +48,7 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
     int end=s.find(' ',beg+1);
     m.type=s.substr(0,beg);
     //cout << "type--------------\n" << m.type << endl;
-    m.path=s.substr(beg,end-beg);
+    m.path=s.substr(beg+1,end-beg-1);
     if(m.type=="GET"){
         
         //cout << "path--------------\n" << m.path << endl;
@@ -75,7 +75,10 @@ string sendCM(struct descript_socket *desc){
     Message m;//每次创建消耗时间
     string date;
     parse(desc->message,m);
-    if(m.type=="GET" && m.path!="/index.html"){
+    // cout << "type " << m.type  << " path " << m.path << "--------------\n";
+    // if(m.path=="/Post_show") cout << "YES\n";
+    // cout << m.name << ' ' << m.id << endl;
+    if(m.type=="GET" && m.path=="/index.html"){
         date = "HTTP/1.1 200 OK\r\n";
 
         date += "Server: ReUp Server\n";
@@ -181,7 +184,7 @@ void * send_client(void * m) {
         //sleep(time_send);
     // }
     
-    cerr << "-------------------2" << endl;
+    // cerr << "-------------------2" << endl;
     //pthread_exit(NULL);
     return 0;
 }
@@ -268,6 +271,5 @@ int main(int argc, char **argv)
     }
     else
         cerr << "Errore apertura socket" << endl;
-    cerr << "-------------------" << endl;
     return 0;
 }

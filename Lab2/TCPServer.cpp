@@ -25,7 +25,7 @@ void* TCPServer::Task(void *arg)
 	while(1) 
 	{
 		//  cout << n <<endl;
-		// sleep(1);
+		// sleep(1);         
 		// cout << "socket " <<  desc->socket << endl;
 		n = recv(desc->socket, msgT, MAXT, 0);//???MAXT
 		// printf("errno is: %d\n",errno);
@@ -66,7 +66,6 @@ void* TCPServer::Task(void *arg)
 	//这里是DEBUG时的LHZ，是我见解太浅了，大神NB，我悟了
 	free(desc);
 	cerr << "exit thread: " << this_thread::get_id() << endl;
-	cerr << "-------------------3" << endl;
 	pthread_exit(NULL);
 	return 0;
 }
