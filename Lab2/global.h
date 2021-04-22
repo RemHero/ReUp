@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <queue>
+#include<errno.h>
 #include "semaphore.h"
 #include <pthread.h>
 //每次接受的信息最大长度
