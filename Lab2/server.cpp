@@ -180,7 +180,7 @@ void * send_client(void * m) {
         //sem_post(&ROsem);
         //sleep(time_send);
     // }
-    free(desc);
+    
     cerr << "-------------------2" << endl;
     //pthread_exit(NULL);
     return 0;
@@ -225,7 +225,7 @@ void * received(void * m)//之后的优化可以考虑一次分配几个任务!!
 
 void* LHZFUN(void *arg){
     while(1){//accepted()如果没有接受到连接请求，则会自己休眠，所以直接while(1)即可
-    cerr << "-------------------1" << endl;
+    //cerr << "-------------------1" << endl;
         tcp.accepted();
     }
 }

@@ -3,6 +3,7 @@
 #include "queue_pool.h"
 
 
+
 char TCPServer::msg[MAXPACKETSIZE];
 int TCPServer::num_client;
 int TCPServer::last_closed;
@@ -20,14 +21,17 @@ void* TCPServer::Task(void *arg)
 	struct descript_socket *desc = (struct descript_socket*) arg;
 	pthread_detach(pthread_self());
 
-        cerr << "open client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" send:"<< desc->enable_message_runtime <<" ]" << endl;
+    cerr << "open client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" send:"<< desc->enable_message_runtime <<" ]" << endl;
 	while(1) 
 	{
-		cout << n <<endl;
-		sleep(1);
+		//  cout << n <<endl;
+		// sleep(1);
+		// cout << "socket " <<  desc->socket << endl;
 		n = recv(desc->socket, msgT, MAXT, 0);//???MAXT
-		if(n != -1) 
+		// printf("errno is: %d\n",errno);
+		if(n!=-1) 
 		{
+			
 			if(n==0) 
 			{
 				isonline = false;//!!!
@@ -46,7 +50,7 @@ void* TCPServer::Task(void *arg)
 			   	mut[1].unlock();//LZH
 			   	break;
 			}
-			msg[n]=0;
+			//msg[n]=0;
 			desc->message = string(msgT);
 	        //std::lock_guard<std::mutex> guard(mt);//LZH
 			mut[2].lock();//LZH
@@ -58,8 +62,9 @@ void* TCPServer::Task(void *arg)
 		}
 		//usleep(600);
     }
-	// if(desc != NULL)//这里怎么可能能释放呢？肯定要用完再释放。
-	// 	free(desc);
+	if(desc != NULL)//这里怎么可能能释放呢？肯定要用完再释放。
+	//这里是DEBUG时的LHZ，是我见解太浅了，大神NB，我悟了
+	free(desc);
 	cerr << "exit thread: " << this_thread::get_id() << endl;
 	cerr << "-------------------3" << endl;
 	pthread_exit(NULL);
