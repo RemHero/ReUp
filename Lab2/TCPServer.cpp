@@ -23,12 +23,12 @@ void* TCPServer::Task(void *arg)
         cerr << "open client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" send:"<< desc->enable_message_runtime <<" ]" << endl;
 	while(1) 
 	{
-		cout << n <<endl;
-		sleep(1);
+		//cout << n <<endl;
+		//sleep(1);
 		n = recv(desc->socket, msgT, MAXT, 0);//???MAXT
-		if(n != -1) 
+		if(true) 
 		{
-			if(n==0) 
+			if(n==-1) 
 			{
 				isonline = false;//!!!
 				cerr << "close client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" ]" << endl;
