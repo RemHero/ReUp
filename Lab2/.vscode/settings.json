@@ -1,0 +1,23 @@
+{
+    "files.associations": {
+        "iostream": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "memory_resource": "cpp",
+        "optional": "cpp",
+        "functional": "cpp",
+        "memory": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "mutex": "cpp",
+        "numeric": "cpp",
+        "ostream": "cpp",
+        "ratio": "cpp",
+        "string_view": "cpp",
+        "thread": "cpp",
+        "type_traits": "cpp",
+        "typeinfo": "cpp"
+    }
+}

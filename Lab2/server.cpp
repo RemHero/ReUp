@@ -7,9 +7,6 @@
 #include "TCPClient.h"
 using namespace std;
 #define B 1
-struct T{
-};
-T* t=new T;
 
 int R=20;   //接受请求accepted()
 int R1=10;  //receive每次处理的最大线程数量
@@ -20,24 +17,14 @@ int O2=1;   //处理线程个数
 sem_t ROsem;
 pthread_mutex_t mutex1;
 TCPServer tcp;
-pthread_t msg1[MAX_CLIENT];
-int num_message = 0;
-int time_send   = 1;
-vector<descript_socket*> descALL;
 ThreadPool po2;
 bool flagproxy=false;
 string proxy;
 
-void close_app(int s) {
+void close_app(int s) {//CTRL C 调用，终止所有线程并退出
     tcp.closed();
     exit(0);
 }
-
-struct argT{
-    string message;
-	struct descript_socket *desc;
-};
-argT* T=new argT[B];
 
 struct Message{
     string type;
@@ -174,8 +161,7 @@ string sendCM(struct descript_socket *desc){
 
 void * send_client(void * m) {
     // cerr << "-------------------begin send_client" << endl;
-	struct argT *arg=(struct argT*) m;
-    struct descript_socket *desc =  (struct descript_socket*)(arg->desc);
+    struct descript_socket *desc =  (struct descript_socket*)(m);
     // while(1) {
         // if(!tcp.is_online() && tcp.get_last_closed_sockets() == desc->id) {
         //     cerr << "Connessione chiusa: stop send_clients( id:" << desc->id << " ip:" << desc->ip << " )"<< endl;
@@ -186,8 +172,6 @@ void * send_client(void * m) {
         
             
         tcp.Send(desc,date);
-        //sem_post(&ROsem);
-        //sleep(time_send);
     // }
     tcp.CloseConnection(desc);
     // cerr << "-------------------send_client" << endl;
@@ -197,7 +181,6 @@ void * send_client(void * m) {
 
 void * received(void * m)//之后的优化可以考虑一次分配几个任务!!!
 {
-    //pthread_detach(pthread_self());//这里不需要，我们用的是线程池
     queue<descript_socket*> descT;
     while(1){
         sem_wait(&ROsem);
@@ -210,23 +193,13 @@ void * received(void * m)//之后的优化可以考虑一次分配几个任务!!
                 if(!desc->enable_message_runtime)
                 {
                     desc->enable_message_runtime = true;
-					T->desc=desc;
-					T->message=desc->message;
-                    //descALL.push_back(desc[i]);
-                    po2.dispatch(send_client,(void *) T);
-                    // if( pthread_create(&msg1[num_message], NULL, send_client, (void *) T) == 0) {
-                    //     cerr << "ATTIVA THREAD INVIO MESSAGGI" << endl;
-                    // }
-                    // start message background thread
-                }
-
-                cout << "id:      " << desc->id      << endl
+                    cout << "id:      " << desc->id      << endl
                      << "ip:      " << desc->ip      << endl
                      << "message: " << desc->message << endl
                      << "socket:  " << desc->socket  << endl
                      << "enable:  " << desc->enable_message_runtime << endl;
-                //sem_wait(&ROsem);
-                //tcp.clean(i);
+                    po2.dispatch(send_client,(void *) desc);
+                }
         }
     }
     return 0;
@@ -241,13 +214,46 @@ void* LHZFUN(void *arg){
 
 int main(int argc, char **argv)
 {
-    if(argc < 7) {
-        cerr << "Usage: ./server port (opt)time-send" << endl;
+    int port=-1;
+
+    for(int i=0;i<argc;i++){
+        string argv_temp=argv[i];
+        if(i==0)continue;
+        else if(argv_temp=="--ip"&&argc>=i+2){
+            i=i+1;
+        }
+        else if(argv_temp=="--port"&&argc>=i+2){
+            i=i+1;
+            port=atoi(argv[i]);
+        }
+        else if(argv_temp=="--number-thread"&&argc>=i+2){
+            i=i+1;
+            O2=atoi(argv[i]);
+        }
+        else if(argv_temp=="--proxy"&&argc>=i+2){
+            i=i+1;
+            flagproxy=true;
+            proxy=argv[i];
+        }
+        else{
+            cerr << "Usage: ./httpserver \n      --ip (ip) \n      --port (port) \n      [--number-thread (thread number)] \n      [--proxy (proxy)]" << endl;
+            tcp.closed();
+            po2.setNum(1);
+            return 0;
+        }
+    }
+    if(port==-1){
+        cerr << "Usage: ./httpserver \n      --ip (ip) \n      --port (port) \n      [--number-thread (thread number)] \n      [--proxy (proxy)]" << endl;
+        tcp.closed();
+        po2.setNum(1);
         return 0;
     }
-    if(argc >=8){
-        flagproxy=true;
-        proxy=argv[8];
+    else{
+        cerr<<"[httpserver: port: "<<port<<" thread number: "<<O2<<" ";
+        if(flagproxy==true){
+            cout<<"use proxy: "<<proxy<<' ';
+        }
+        cerr  <<"]\n";
     }
 
     if (sem_init(&ROsem,0,0)) {
@@ -258,7 +264,6 @@ int main(int argc, char **argv)
     
     std::signal(SIGINT, close_app);
     pthread_mutex_init(&mutex1,NULL);
-    O2=atoi(argv[6]);
     ThreadPool po1(O1);
     ThreadPool pw(W);
     ThreadPool pr(R);
@@ -270,29 +275,19 @@ int main(int argc, char **argv)
     if(flagproxy){
         
     }
-    if( tcp.setup(atoi(argv[4]),opts) == 0) {
+    if( tcp.setup(port,opts) == 0) {
         for(int i=0;i<O1;i++){
             po1.dispatch(received,(void *)0);
         }  
         for(int i=0;i<R;i++){
             pr.dispatch(LHZFUN,(void*)0);
         }
-        cerr << "Accepted" << endl;
+        cout << "Running... ...\n" << endl;
         string cmd;
         cin >> cmd;//cin阻塞
-        if(cmd=="quit") return 0;
+        if(cmd=="quit") exit(0);
     }
     else
         cerr << "Errore apertura socket" << endl;
     return 0;
 }
-/*
-else {
-            string ips,port;
-            int poi=desc->message.find(":");
-            ips=desc->message.substr(0,poi);
-            port=desc->message.substr(poi+1);
-            date=desc->message+"\nips:"+ips+"\nports:"+port;
-            
-        }
-*/
