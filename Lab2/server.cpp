@@ -30,6 +30,7 @@ struct Message{
     string type;
     string path;
     string name,id;
+    int port;
 };
 
 void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？？
@@ -39,6 +40,16 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
     m.type=s.substr(0,beg);
     //cout << "type--------------\n" << m.type << endl;
     m.path=s.substr(beg+1,end-beg-1);
+    if(m.path.find("http://")!=m.path.npos){
+        m.path=m.path.substr(m.path.find("http://")+7);//这里默认是http://www.baidu.com/的格式
+        m.path=m.path.substr(0,m.path.length()-1);
+        if(m.path.find(":")!=m.path.npos){
+            m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
+        }
+        else{
+            m.port=80;
+        }
+    }
     if(m.type=="GET"){
         
         //cout << "path--------------\n" << m.path << endl;
@@ -141,10 +152,49 @@ string sendCM(struct descript_socket *desc){
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
+    else if(m.type=="GET" && m.path==proxy){//使用代理
+        cerr<<"Using proxy: "<<proxy<<endl;
+        TCPClient tcpc;
+        if(tcpc.setup(proxy,m.port)==false){
+            cerr<<"ERROR: create tcp to upstream server failed!\n";
+            date = "HTTP/1.1 404 Not Found\r\n";
+
+            date += "Server: ReUp Server\n";
+            date += "Content-type: text/html\n";
+            date += "Content-length: 112\n";
+
+            date += "\r\n";
+
+            date += "<html><title>404 Not Found</title><body bgcolor=ffffff>\n";
+            date += " Not Found \n";
+            date += "<hr><em>HTTP Web server</em>\n";
+            date += "</body></html>\n";
+            return date;
+        }
+        if(tcpc.Send(desc->message)==false){
+            cerr<<"ERROR: send data to upstream server failed!\n";
+            date = "HTTP/1.1 404 Not Found\r\n";
+
+            date += "Server: ReUp Server\n";
+            date += "Content-type: text/html\n";
+            date += "Content-length: 112\n";
+
+            date += "\r\n";
+
+            date += "<html><title>404 Not Found</title><body bgcolor=ffffff>\n";
+            date += " Not Found \n";
+            date += "<hr><em>HTTP Web server</em>\n";
+            date += "</body></html>\n";
+            return date;
+        }
+        date=tcpc.receive();
+        tcpc.exit();
+        return date;
+    }
     else{
         date = "HTTP/1.1 404 Not Found\r\n";
 
-        date += "Server: Lab Web Server\n";
+        date += "Server: ReUp Server\n";
         date += "Content-type: text/html\n";
         date += "Content-length: 112\n";
 

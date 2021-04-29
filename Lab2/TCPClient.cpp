@@ -14,7 +14,7 @@ bool TCPClient::setup(string address , int port)
 		sock = socket(AF_INET , SOCK_STREAM , 0);
 		if (sock == -1)
 		{
-      			cout << "Could not create socket" << endl;
+      			// cout << "Could not create socket" << endl;
     		}
         }
   	if((signed)inet_addr(address.c_str()) == -1)
@@ -23,8 +23,8 @@ bool TCPClient::setup(string address , int port)
     		struct in_addr **addr_list;
     		if ( (he = gethostbyname( address.c_str() ) ) == NULL)
     		{
-		      herror("gethostbyname");
-      		      cout<<"Failed to resolve hostname\n";
+		    //   herror("gethostbyname");
+      		    //   cout<<"Failed to resolve hostname\n";
 		      return false;
     		}
 	   	addr_list = (struct in_addr **) he->h_addr_list;
@@ -54,7 +54,7 @@ bool TCPClient::Send(string data)
 	{
 		if( send(sock , data.c_str() , strlen( data.c_str() ) , 0) < 0)
 		{
-			cout << "Send failed : " << data << endl;
+			// cout << "Send failed : " << data << endl;
 			return false;
 		}
 	}
@@ -71,7 +71,7 @@ string TCPClient::receive(int size)
   	string reply;
 	if( recv(sock , buffer , size, 0) < 0)
   	{
-	    	cout << "receive failed!" << endl;
+	    	// cout << "receive failed!" << endl;
 		return nullptr;
   	}
 	buffer[size-1]='\0';
@@ -86,7 +86,7 @@ string TCPClient::read()
   	while (buffer[0] != '\n') {
     		if( recv(sock , buffer , sizeof(buffer) , 0) < 0)
     		{
-      			cout << "receive failed!" << endl;
+      			// cout << "receive failed!" << endl;
 			return nullptr;
     		}
 		reply += buffer[0];
