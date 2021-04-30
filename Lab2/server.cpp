@@ -5,6 +5,7 @@
 #include "queue_pool.h"
 #include "TCPServer.h"
 #include "TCPClient.h"
+#include <map>
 using namespace std;
 #define B 1
 
@@ -20,6 +21,7 @@ TCPServer tcp;
 ThreadPool po2;
 bool flagproxy=false;
 string proxy;
+map<string,string> cacheforweb;
 
 void close_app(int s) {//CTRL C 调用，终止所有线程并退出
     tcp.closed();
@@ -30,7 +32,7 @@ struct Message{
     string type;
     string path;
     string name,id;
-    int port;
+    int port=0;
 };
 
 void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？？
@@ -153,9 +155,9 @@ string sendCM(struct descript_socket *desc){
         date += "</body></html>\n";
     }
     else if(m.type=="GET" && m.path==proxy){//使用代理
-        cerr<<"Using proxy: "<<proxy<<endl;
+        cerr<<"Using proxy: "<<m.path<<endl;
         TCPClient tcpc;
-        if(tcpc.setup(proxy,m.port)==false){
+        if(tcpc.setup(m.path,m.port)==false){
             cerr<<"ERROR: create tcp to upstream server failed!\n";
             date = "HTTP/1.1 404 Not Found\r\n";
 
@@ -170,6 +172,9 @@ string sendCM(struct descript_socket *desc){
             date += "<hr><em>HTTP Web server</em>\n";
             date += "</body></html>\n";
             return date;
+        }
+        if(cacheforweb.find(m.path)!=cacheforweb.end()){//如果缓存里有，那么发送的包加上if-modified-since
+            desc->message=desc->message.insert(desc->message.find_first_of('\n')+1,"If-Modified-Since: "+cacheforweb[m.path].substr(cacheforweb[m.path].find("Last-Modified: ")+15,cacheforweb[m.path].find_first_of('\n',cacheforweb[m.path].find("Last-Modified: "))-cacheforweb[m.path].find_first_of(' ',cacheforweb[m.path].find("Last-Mo"))));
         }
         if(tcpc.Send(desc->message)==false){
             cerr<<"ERROR: send data to upstream server failed!\n";
@@ -188,6 +193,14 @@ string sendCM(struct descript_socket *desc){
             return date;
         }
         date=tcpc.receive();
+        if(date.find("Last-Modified: ")!=date.npos&&date.substr(9,3)=="200"){//如果返回的response中有modified信息，将其response存入缓存
+            cacheforweb[m.path]=date;
+        }
+        else if(date.substr(9,3)=="304"){
+            // date=cacheforweb[m.path];
+            date=cacheforweb[m.path];
+            date=date.insert(date.find_first_of('\n')+1,"Using-Cache-From: 127.0.0.1\n");
+        }
         tcpc.exit();
         return date;
     }
