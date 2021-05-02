@@ -4,42 +4,35 @@
 #include "global.h"
 #include "queue_pool.h"
 #include "TCPServer.h"
+#include "TCPClient.h"
+#include <map>
 using namespace std;
 #define B 1
-struct T{
-};
-T* t=new T;
 
-int R=8;
-int R1=1;
-int W=1;
-int O1=1;
-int O2=1;
+int R=20;   //接受请求accepted()
+int R1=10;  //receive每次处理的最大线程数量
+int W=1;    //目前没用到
+int O1=10;  //取出任务的线程数量
+int O2=1;   //处理线程个数
 
 sem_t ROsem;
 pthread_mutex_t mutex1;
 TCPServer tcp;
-pthread_t msg1[MAX_CLIENT];
-int num_message = 0;
-int time_send   = 1;
-vector<descript_socket*> descALL;
 ThreadPool po2;
+bool flagproxy=false;
+string proxy;
+map<string,string> cacheforweb;
 
-void close_app(int s) {
+void close_app(int s) {//CTRL C 调用，终止所有线程并退出
     tcp.closed();
     exit(0);
 }
-
-struct argT{
-    string message;
-	struct descript_socket *desc;
-};
-argT* T=new argT[B];
 
 struct Message{
     string type;
     string path;
     string name,id;
+    int port=0;
 };
 
 void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？？
@@ -49,6 +42,16 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
     m.type=s.substr(0,beg);
     //cout << "type--------------\n" << m.type << endl;
     m.path=s.substr(beg+1,end-beg-1);
+    if(m.path.find("http://")!=m.path.npos){
+        m.path=m.path.substr(m.path.find("http://")+7);//这里默认是http://www.baidu.com/的格式
+        m.path=m.path.substr(0,m.path.length()-1);
+        if(m.path.find(":")!=m.path.npos){
+            m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
+        }
+        else{
+            m.port=9999;
+        }
+    }
     if(m.type=="GET"){
         
         //cout << "path--------------\n" << m.path << endl;
@@ -151,10 +154,61 @@ string sendCM(struct descript_socket *desc){
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
+    else if(m.type=="GET" && m.path==proxy){//使用代理
+        cerr<<"Using proxy: "<<m.path<<endl;
+        TCPClient tcpc;
+        if(tcpc.setup(m.path,m.port)==false){
+            exit(1);
+            cerr<<"ERROR: create tcp to upstream server failed!\n";
+            date = "HTTP/1.1 404 Not Found\r\n";
+
+            date += "Server: ReUp Server\n";
+            date += "Content-type: text/html\n";
+            date += "Content-length: 112\n";
+
+            date += "\r\n";
+
+            date += "<html><title>404 Not Found</title><body bgcolor=ffffff>\n";
+            date += " Not Found \n";
+            date += "<hr><em>HTTP Web server</em>\n";
+            date += "</body></html>\n";
+            return date;
+        }
+        if(cacheforweb.find(m.path)!=cacheforweb.end()){//如果缓存里有，那么发送的包加上if-modified-since
+            desc->message=desc->message.insert(desc->message.find_first_of('\n')+1,"If-Modified-Since: "+cacheforweb[m.path].substr(cacheforweb[m.path].find("Last-Modified: ")+15,cacheforweb[m.path].find_first_of('\n',cacheforweb[m.path].find("Last-Modified: "))-cacheforweb[m.path].find_first_of(' ',cacheforweb[m.path].find("Last-Mo"))));
+        }
+        if(tcpc.Send(desc->message)==false){
+            cerr<<"ERROR: send data to upstream server failed!\n";
+            date = "HTTP/1.1 404 Not Found\r\n";
+
+            date += "Server: ReUp Server\n";
+            date += "Content-type: text/html\n";
+            date += "Content-length: 112\n";
+
+            date += "\r\n";
+
+            date += "<html><title>404 Not Found</title><body bgcolor=ffffff>\n";
+            date += " Not Found \n";
+            date += "<hr><em>HTTP Web server</em>\n";
+            date += "</body></html>\n";
+            return date;
+        }
+        date=tcpc.receive();
+        if(date.find("Last-Modified: ")!=date.npos&&date.substr(9,3)=="200"){//如果返回的response中有modified信息，将其response存入缓存
+            cacheforweb[m.path]=date;
+        }
+        else if(date.substr(9,3)=="304"){
+            // date=cacheforweb[m.path];
+            date=cacheforweb[m.path];
+            date=date.insert(date.find_first_of('\n')+1,"Using-Cache-From: 127.0.0.1\n");
+        }
+        tcpc.exit();
+        return date;
+    }
     else{
         date = "HTTP/1.1 404 Not Found\r\n";
 
-        date += "Server: Lab Web Server\n";
+        date += "Server: ReUp Server\n";
         date += "Content-type: text/html\n";
         date += "Content-length: 112\n";
 
@@ -170,31 +224,32 @@ string sendCM(struct descript_socket *desc){
 
 
 void * send_client(void * m) {
-	struct argT *arg=(struct argT*) m;
-    struct descript_socket *desc =  (struct descript_socket*)(arg->desc);
+    pthread_detach(pthread_self());
+    // cerr << "-------------------begin send_client" << endl;
+    struct descript_socket *desc =  (struct descript_socket*)(m);
     // while(1) {
         // if(!tcp.is_online() && tcp.get_last_closed_sockets() == desc->id) {
         //     cerr << "Connessione chiusa: stop send_clients( id:" << desc->id << " ip:" << desc->ip << " )"<< endl;
         //     break;
         // }//这部分是对连接的持久性进行测试，过于高端，实验用不上，咱直接发送，鲁棒性永远滴神
+        string date;
+        date=sendCM(desc);
         
-        string date=sendCM(desc);
-        tcp.Send(date, desc->id);
-        //sem_post(&ROsem);
-        //sleep(time_send);
+            
+        tcp.Send(desc,date);
     // }
-    
-    // cerr << "-------------------2" << endl;
+    tcp.CloseConnection(desc);
+    // cerr << "-------------------send_client" << endl;
     //pthread_exit(NULL);
+    pthread_exit(NULL);
     return 0;
 }
 
 void * received(void * m)//之后的优化可以考虑一次分配几个任务!!!
 {
-    //pthread_detach(pthread_self());//这里不需要，我们用的是线程池
+    queue<descript_socket*> descT;
     while(1){
         sem_wait(&ROsem);
-        queue<descript_socket*> descT;
         pthread_mutex_lock(&mutex1);
         descT = tcp.getMessage();
         pthread_mutex_unlock(&mutex1);
@@ -204,23 +259,15 @@ void * received(void * m)//之后的优化可以考虑一次分配几个任务!!
                 if(!desc->enable_message_runtime)
                 {
                     desc->enable_message_runtime = true;
-					T->desc=desc;
-					T->message=desc->message;
-                    //descALL.push_back(desc[i]);
-                    po2.dispatch(send_client,(void *) T);
-                    // if( pthread_create(&msg1[num_message], NULL, send_client, (void *) T) == 0) {
-                    //     cerr << "ATTIVA THREAD INVIO MESSAGGI" << endl;
-                    // }
-                    // start message background thread
-                }
-
-                cout << "id:      " << desc->id      << endl
+                    cout << "id:      " << desc->id      << endl
                      << "ip:      " << desc->ip      << endl
                      << "message: " << desc->message << endl
                      << "socket:  " << desc->socket  << endl
                      << "enable:  " << desc->enable_message_runtime << endl;
-                //sem_wait(&ROsem);
-                //tcp.clean(i);
+                    pthread_t p;
+                    pthread_create(&p, NULL, &send_client, (void *) desc);
+                    // po2.dispatch(send_client,(void *) desc);
+                }
         }
     }
     return 0;
@@ -235,19 +282,56 @@ void* LHZFUN(void *arg){
 
 int main(int argc, char **argv)
 {
-    if(argc < 7) {
-        cerr << "Usage: ./server port (opt)time-send" << endl;
+    int port=-1;
+
+    for(int i=0;i<argc;i++){
+        string argv_temp=argv[i];
+        if(i==0)continue;
+        else if(argv_temp=="--ip"&&argc>=i+2){
+            i=i+1;
+        }
+        else if(argv_temp=="--port"&&argc>=i+2){
+            i=i+1;
+            port=atoi(argv[i]);
+        }
+        else if(argv_temp=="--number-thread"&&argc>=i+2){
+            i=i+1;
+            O2=atoi(argv[i]);
+        }
+        else if(argv_temp=="--proxy"&&argc>=i+2){
+            i=i+1;
+            flagproxy=true;
+            proxy=argv[i];
+        }
+        else{
+            cerr << "Usage: ./httpserver \n      --ip (ip) \n      --port (port) \n      [--number-thread (thread number)] \n      [--proxy (proxy)]" << endl;
+            tcp.closed();
+            po2.setNum(1);
+            return 0;
+        }
+    }
+    if(port==-1){
+        cerr << "Usage: ./httpserver \n      --ip (ip) \n      --port (port) \n      [--number-thread (thread number)] \n      [--proxy (proxy)]" << endl;
+        tcp.closed();
+        po2.setNum(1);
         return 0;
     }
+    else{
+        cerr<<"[httpserver: port: "<<port<<" thread number: "<<O2<<" ";
+        if(flagproxy==true){
+            cout<<"use proxy: "<<proxy<<' ';
+        }
+        cerr  <<"]\n";
+    }
+
     if (sem_init(&ROsem,0,0)) {
         printf("Semaphore initialization failed!!\n");
         exit(EXIT_FAILURE);
     }
     
-
+    
     std::signal(SIGINT, close_app);
     pthread_mutex_init(&mutex1,NULL);
-    O2=atoi(argv[6]);
     ThreadPool po1(O1);
     ThreadPool pw(W);
     ThreadPool pr(R);
@@ -255,19 +339,21 @@ int main(int argc, char **argv)
 	pr.run();po1.run();po2.run();pw.run();
     pthread_t msg;
     vector<int> opts = { SO_REUSEPORT, SO_REUSEADDR };
-
-
-    if( tcp.setup(atoi(argv[4]),opts) == 0) {
+    
+    if(flagproxy){
+        
+    }
+    if( tcp.setup(port,opts) == 0) {
         for(int i=0;i<O1;i++){
             po1.dispatch(received,(void *)0);
         }  
         for(int i=0;i<R;i++){
             pr.dispatch(LHZFUN,(void*)0);
         }
-        cerr << "Accepted" << endl;
+        cout << "Running... ...\n" << endl;
         string cmd;
         cin >> cmd;//cin阻塞
-        if(cmd=="quit") return 0;
+        if(cmd=="quit") exit(0);
     }
     else
         cerr << "Errore apertura socket" << endl;

@@ -14,6 +14,33 @@ std::mutex TCPServer::mt;
 std::mutex TCPServer::mut[10];
 long long recNum=0;
 
+void TCPServer::CloseConnection(descript_socket *desc){
+	isonline = false;//!!!
+	cerr << "close client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" ]" << endl;
+	last_closed = desc->id;
+	if(desc->socket==0 || close(desc->socket)!=0){
+		cerr <<"socket close failed";
+		exit(0);
+	}
+
+	int id = desc->id;
+
+	mut[1].lock();//LZH
+	// auto new_end = std::remove_if(newsockfd.begin(), newsockfd.end(),
+	// 				[id](descript_socket *device)
+	// 				{ return device->id == id; });
+	// newsockfd.erase(new_end, newsockfd.end());
+	if(num_client>0) num_client--;
+	mut[1].unlock();//LZH
+
+	if(desc != NULL)//这里怎么可能能释放呢？肯定要用完再释放。
+	//这里是DEBUG时的LHZ，是我见解太浅了，大神NB，我悟了
+	//这是再后来的LHZ，这TM什么垃圾代码，根本就不支持多线程
+	free(desc);
+	cerr << "exit thread: " << this_thread::get_id() << endl;
+	cerr << "-----------------------------------\n" << endl;
+}
+
 void* TCPServer::Task(void *arg)
 {
 	char msgT[MAXT];//???MAXT
@@ -22,50 +49,56 @@ void* TCPServer::Task(void *arg)
 	pthread_detach(pthread_self());
 
     cerr << "open client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" send:"<< desc->enable_message_runtime <<" ]" << endl;
+	int getTime=0;
 	while(1) 
 	{
-		//  cout << n <<endl;
+		// cout <<"------------begin\n";
+		// cout << "n---"<<n <<endl;
 		// sleep(1);         
-		// cout << "socket " <<  desc->socket << endl;
+		// cout << "socket---" <<  desc->socket << endl;
 		n = recv(desc->socket, msgT, MAXT, 0);//???MAXT
 		// printf("errno is: %d\n",errno);
+		if(errno!=0){
+			printf("errno is: %d\n",errno);
+			exit(1);
+		}
 		if(n!=-1) 
 		{
-			
 			if(n==0) 
 			{
-				isonline = false;//!!!
-				cerr << "close client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" ]" << endl;
-				last_closed = desc->id;
-				close(desc->socket);
+				// isonline = false;//!!!
+				// cerr << "close client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" ]" << endl;
+				// last_closed = desc->id;
+				// close(desc->socket);
 
-				int id = desc->id;
+				// int id = desc->id;
 
-				mut[1].lock();//LZH
-				auto new_end = std::remove_if(newsockfd.begin(), newsockfd.end(),
-													[id](descript_socket *device)
-														{ return device->id == id; });
-			   	newsockfd.erase(new_end, newsockfd.end());
-			   	if(num_client>0) num_client--;
-			   	mut[1].unlock();//LZH
+				// mut[1].lock();//LZH
+				// auto new_end = std::remove_if(newsockfd.begin(), newsockfd.end(),
+				// 									[id](descript_socket *device)
+				// 										{ return device->id == id; });
+			   	// newsockfd.erase(new_end, newsockfd.end());
+			   	// if(num_client>0) num_client--;
+			   	// mut[1].unlock();//LZH
 			   	break;
 			}
-			//msg[n]=0;
+			msg[n]=0;
 			desc->message = string(msgT);
 	        //std::lock_guard<std::mutex> guard(mt);//LZH
 			mut[2].lock();//LZH
 			Message.push( desc );
-			// recNum++;
-			// if(recNum%R1==0)
-				sem_post(&ROsem);
+			sem_post(&ROsem);
 			mut[2].unlock();//LZH
+			// cout << "----------------end\n";
+			break;//为了压力测试，之后要删掉
 		}
 		//usleep(600);
     }
-	if(desc != NULL)//这里怎么可能能释放呢？肯定要用完再释放。
-	//这里是DEBUG时的LHZ，是我见解太浅了，大神NB，我悟了
-	free(desc);
-	cerr << "exit thread: " << this_thread::get_id() << endl;
+	// if(desc != NULL)//这里怎么可能能释放呢？肯定要用完再释放。
+	// //这里是DEBUG时的LHZ，是我见解太浅了，大神NB，我悟了
+	// free(desc);
+	// cerr << "exit thread: " << this_thread::get_id() << endl;
+	// cerr << "-----------------------------------\n" << endl;
 	pthread_exit(NULL);
 	return 0;
 }
@@ -107,18 +140,26 @@ void TCPServer::accepted()//这里需要对队列进行加锁访问
 {		
 		socklen_t sosize    = sizeof(clientAddress);
 		descript_socket *so = new descript_socket;
-		so->socket          = accept(sockfd,(struct sockaddr*)&clientAddress,&sosize);
+		so->socket=-1;//初始化
+		if((so->socket = accept(sockfd,(struct sockaddr*)&clientAddress,&sosize))<0)
+		{
+			perror("accept() error!\n");
+			exit(1);
+		}
+		// so->socket          = accept(sockfd,(struct sockaddr*)&clientAddress,&sosize);
 		
 		//cout <<"--------------\n";
 
 		mut[0].lock();//LZH
+		// cout << "------------ip:"<<inet_ntoa(clientAddress.sin_addr)<< endl;
+		// cout << "------------socket:"<<so->socket<< endl;
 		so->id              = num_client;
 		so->ip              = inet_ntoa(clientAddress.sin_addr);
-		newsockfd.push_back( so );
-		cerr << "accept client[ id:" << newsockfd[num_client]->id << 
-							" ip:" << newsockfd[num_client]->ip << 
-						" handle:" << newsockfd[num_client]->socket << " ]" << endl;
-		pthread_create(&serverThread[num_client], NULL, &Task, (void *)newsockfd[num_client]);
+		// newsockfd.push_back( so );
+		cerr << "accept client[ id:" << so->id << 
+							" ip:" << so->ip << 
+						" handle:" << so->socket << " ]" << endl;
+		pthread_create(&serverThread[num_client], NULL, &Task, (void *)so);//!!!这里的优化
 		isonline=true;
 		num_client++;
 		mut[0].unlock();//LZH
@@ -145,9 +186,9 @@ queue<descript_socket*> TCPServer::getMessage()//Version 1.0只返回一个值�
 	return MT;
 }
 
-void TCPServer::Send(string msg, int id)
+void TCPServer::Send(descript_socket* desc,string msg)
 {
-	send(newsockfd[id]->socket,msg.c_str(),msg.length(),0);
+	send(desc->socket,msg.c_str(),msg.length(),0);
 }
 
 int TCPServer::get_last_closed_sockets()

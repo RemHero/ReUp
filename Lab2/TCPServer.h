@@ -41,9 +41,10 @@ class TCPServer
 		int setup(int port, vector<int> opts = vector<int>());
 		queue<descript_socket*> getMessage();
 		void accepted();
-		void Send(string msg, int id);
+		void Send(descript_socket* desc,string msg);
 		void detach(int id);
 		//void clean(int id);
+		void CloseConnection(descript_socket* desc);
 		bool is_online();
 		string get_ip_addr(int id);
 		int get_last_closed_sockets();
