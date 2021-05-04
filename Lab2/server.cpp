@@ -49,8 +49,9 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
             m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
         }
         else{
-            m.port=9999;
+            m.port=80;
         }
+        // cout<< "-----------path "+m.path << endl;
     }
     if(m.type=="GET"){
         
@@ -94,12 +95,14 @@ string sendCM(struct descript_socket *desc){
         date += " GOOD! \n";
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
-    }else if(m.type=="POST" && !m.name.empty() && !m.id.empty() && m.path=="/Post_show"){
+    }else if(m.type=="POST" && !m.name.empty() && !m.id.empty() && m.path=="/Post_show"){//119
+        int lenT=m.name.length()+m.id.length();
+        string lengthT=to_string(lenT+119);
         date = "HTTP/1.1 200 OK\r\n";
 
         date += "Server: ReUp Server\n";
         date += "Content-type: text/html\n";
-        date += "Content-length: 129\n";
+        date += "Content-length: "+lengthT+"\n";
 
         date += "\r\n";
 
@@ -158,8 +161,8 @@ string sendCM(struct descript_socket *desc){
         cerr<<"Using proxy: "<<m.path<<endl;
         TCPClient tcpc;
         if(tcpc.setup(m.path,m.port)==false){
-            exit(1);
             cerr<<"ERROR: create tcp to upstream server failed!\n";
+            // exit(1);//debug
             date = "HTTP/1.1 404 Not Found\r\n";
 
             date += "Server: ReUp Server\n";
@@ -174,11 +177,16 @@ string sendCM(struct descript_socket *desc){
             date += "</body></html>\n";
             return date;
         }
+        // cout << "=====================================path 2" << m.path << endl;
         if(cacheforweb.find(m.path)!=cacheforweb.end()){//如果缓存里有，那么发送的包加上if-modified-since
             desc->message=desc->message.insert(desc->message.find_first_of('\n')+1,"If-Modified-Since: "+cacheforweb[m.path].substr(cacheforweb[m.path].find("Last-Modified: ")+15,cacheforweb[m.path].find_first_of('\n',cacheforweb[m.path].find("Last-Modified: "))-cacheforweb[m.path].find_first_of(' ',cacheforweb[m.path].find("Last-Mo"))));
+            cout << "========================================================yes cache!\n";
+        }else{
+            desc->message.insert(desc->message.find_first_of('\n')+1,"If-Modified-Since: Mon, 23 Jan 2000 13:28:24 GMT");
         }
         if(tcpc.Send(desc->message)==false){
             cerr<<"ERROR: send data to upstream server failed!\n";
+            // exit(1);//debug
             date = "HTTP/1.1 404 Not Found\r\n";
 
             date += "Server: ReUp Server\n";
@@ -195,10 +203,13 @@ string sendCM(struct descript_socket *desc){
         }
         date=tcpc.receive();
         if(date.find("Last-Modified: ")!=date.npos&&date.substr(9,3)=="200"){//如果返回的response中有modified信息，将其response存入缓存
+            cout << "========================================================yes 200!\n";
+            cout << date << endl;
+            cout << "========================================================yes 200!\n";
             cacheforweb[m.path]=date;
         }
         else if(date.substr(9,3)=="304"){
-            // date=cacheforweb[m.path];
+            date=cacheforweb[m.path];cout << "========================================================yes find it!\n";
             date=cacheforweb[m.path];
             date=date.insert(date.find_first_of('\n')+1,"Using-Cache-From: 127.0.0.1\n");
         }
