@@ -21,6 +21,7 @@ TCPServer tcp;
 ThreadPool po2;
 bool flagproxy=false;
 string proxy;
+int destprot=80;
 map<string,string> cacheforweb;
 
 void close_app(int s) {//CTRL C 调用，终止所有线程并退出
@@ -43,7 +44,19 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
     //cout << "type--------------\n" << m.type << endl;
     m.path=s.substr(beg+1,end-beg-1);
     if(m.path.find("http://")!=m.path.npos){
-        m.path=m.path.substr(m.path.find("http://")+7);//这里默认是http://www.baidu.com/的格式
+        m.path=m.path.substr(m.path.find("http://")+7);//这里默认是http://www.baidu.com:80/的格式
+        m.path=m.path.substr(0,m.path.length()-1);
+        if(m.path.find(":")!=m.path.npos){
+            m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
+            m.path=m.path.substr(0,m.path.find(":"));
+        }
+        else{
+            m.port=80;
+        }
+        // cout<< "-----------path "+m.path << endl;
+    }
+    else if(m.path.find("https://")!=m.path.npos){
+        m.path=m.path.substr(m.path.find("https://")+8);//这里默认是https://www.baidu.com:80/的格式
         m.path=m.path.substr(0,m.path.length()-1);
         if(m.path.find(":")!=m.path.npos){
             m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
@@ -157,7 +170,7 @@ string sendCM(struct descript_socket *desc){
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
-    else if(m.type=="GET" && m.path==proxy){//使用代理
+    else if(m.type=="GET" && m.path==proxy && m.port==destprot){//使用代理
         cerr<<"Using proxy: "<<m.path<<endl;
         TCPClient tcpc;
         if(tcpc.setup(m.path,m.port)==false){
@@ -202,6 +215,9 @@ string sendCM(struct descript_socket *desc){
             return date;
         }
         date=tcpc.receive();
+        cout << "========================================================NOOOOOOOO!\n";
+            cout << date << endl;
+            cout << "========================================================NOOOOOOO!\n";
         if(date.find("Last-Modified: ")!=date.npos&&date.substr(9,3)=="200"){//如果返回的response中有modified信息，将其response存入缓存
             cout << "========================================================yes 200!\n";
             cout << date << endl;
@@ -313,6 +329,21 @@ int main(int argc, char **argv)
             i=i+1;
             flagproxy=true;
             proxy=argv[i];
+            if(proxy.find("http://")!=proxy.npos){
+                proxy=proxy.substr(proxy.find("http://")+7);
+            }
+            else if(proxy.find("https://")!=proxy.npos){
+                proxy=proxy.substr(proxy.find("https://")+8);
+            }
+            if(proxy.find("/")!=proxy.npos){
+                proxy=proxy.substr(0,proxy.find("/"));
+            }
+            if(proxy.find(":")!=proxy.npos){
+                destprot=stoi(proxy.substr(proxy.find(":")+1,proxy.length()));
+                proxy=proxy.substr(0,proxy.find(":"));
+            }
+            
+            
         }
         else{
             cerr << "Usage: ./httpserver \n      --ip (ip) \n      --port (port) \n      [--number-thread (thread number)] \n      [--proxy (proxy)]" << endl;
@@ -330,7 +361,8 @@ int main(int argc, char **argv)
     else{
         cerr<<"[httpserver: port: "<<port<<" thread number: "<<O2<<" ";
         if(flagproxy==true){
-            cout<<"use proxy: "<<proxy<<' ';
+            cout<<"proxy: "<<proxy<<' ';
+            cout<<"destport: "<<destprot<<' ';
         }
         cerr  <<"]\n";
     }
