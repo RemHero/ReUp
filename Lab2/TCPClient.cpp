@@ -74,10 +74,44 @@ string TCPClient::receive(int size)
 	    	// cout << "receive failed!" << endl;
 		return nullptr;
   	}
+<<<<<<< Updated upstream
+=======
+	// timeval tv_out;
+	// tv_out.tv_sec = 1;
+    // tv_out.tv_usec = 0;
+    // setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv_out, sizeof(tv_out));
+	// int num=0;
+	// while(1) 
+	// {	
+	// 	num++;
+	// 	if(num>5) break;
+	// 	int n=0;
+	// 	n=recv(sock , buffer , size, 0);
+	// 	// if(errno!=0){
+	// 	// 	printf("errno is: %d\n",errno);
+	// 	// 	perror("11");
+	// 	// 	close(sock);
+	// 	// 	pthread_exit(NULL);
+	// 	// }
+	// 	if(n<=0) break;
+	// 	cerr<<"========================================wait!!!!\n";
+	// 	// usleep(1);
+	// 	buffer[size-1]='\0';
+	// 	reply += buffer;
+	// }
+	// if(errno!=0){
+	// 		printf("errno is: %d\n",errno);
+	// 		perror("11");
+	// 		close(sock);
+	// 		pthread_exit(NULL);
+	// 	}
+	usleep(1);
+>>>>>>> Stashed changes
 	buffer[size-1]='\0';
-  	reply = buffer;
+	reply = buffer;
   	return reply;
 }
+
 
 string TCPClient::read()
 {

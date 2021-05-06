@@ -14,10 +14,15 @@
         "mutex": "cpp",
         "numeric": "cpp",
         "ostream": "cpp",
+<<<<<<< Updated upstream
         "ratio": "cpp",
         "string_view": "cpp",
         "thread": "cpp",
         "type_traits": "cpp",
         "typeinfo": "cpp"
+=======
+        "iostream": "cpp",
+        "mutex": "cpp"
+>>>>>>> Stashed changes
     }
 }

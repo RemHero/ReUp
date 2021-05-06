@@ -16,6 +16,7 @@ long long recNum=0;
 
 void TCPServer::CloseConnection(descript_socket *desc){
 	isonline = false;//!!!
+	if(DEBUG)
 	cerr << "close client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" ]" << endl;
 	last_closed = desc->id;
 	if(desc->socket==0 || close(desc->socket)!=0){
@@ -36,20 +37,27 @@ void TCPServer::CloseConnection(descript_socket *desc){
 	if(desc != NULL)//这里怎么可能能释放呢？肯定要用完再释放。
 	//这里是DEBUG时的LHZ，是我见解太浅了，大神NB，我悟了
 	//这是再后来的LHZ，这TM什么垃圾代码，根本就不支持多线程
-	free(desc);
-	cerr << "exit thread: " << this_thread::get_id() << endl;
-	cerr << "-----------------------------------\n" << endl;
+		free(desc);
+	if(DEBUG){
+		cerr << "exit thread: " << this_thread::get_id() << endl;
+		cerr << "-----------------------------------\n" << endl;
+	}
+	
 }
 
 void* TCPServer::Task(void *arg)
 {
 	char msgT[MAXT];//???MAXT
-	int n;
+	int n=-1;
 	struct descript_socket *desc = (struct descript_socket*) arg;
 	pthread_detach(pthread_self());
-
+	if(DEBUG)
     cerr << "open client[ id:"<< desc->id <<" ip:"<< desc->ip <<" socket:"<< desc->socket<<" send:"<< desc->enable_message_runtime <<" ]" << endl;
 	int getTime=0;
+	timeval tv_out;
+	tv_out.tv_sec = 1;
+    tv_out.tv_usec = 0;
+    setsockopt(desc->socket, SOL_SOCKET, SO_RCVTIMEO, &tv_out, sizeof(tv_out));
 	while(1) 
 	{
 		// cout <<"------------begin\n";
@@ -58,10 +66,14 @@ void* TCPServer::Task(void *arg)
 		// cout << "socket---" <<  desc->socket << endl;
 		n = recv(desc->socket, msgT, MAXT, 0);//???MAXT
 		// printf("errno is: %d\n",errno);
-		if(errno!=0){
-			printf("errno is: %d\n",errno);
-			exit(1);
-		}
+		// if(errno!=0){
+		// 	printf("errno is: %d\n",errno);
+		// 	perror("11");
+		// 	close(desc->socket);
+		// 	pthread_exit(NULL);
+		// 	// continue;
+		// 	// exit(1);
+		// }
 		if(n!=-1) 
 		{
 			if(n==0) 
@@ -82,8 +94,11 @@ void* TCPServer::Task(void *arg)
 			   	// mut[1].unlock();//LZH
 			   	break;
 			}
-			msg[n]=0;
+			msg[n]='\0';
+			if(DEBUG)
+			cout << strlen(msgT);
 			desc->message = string(msgT);
+			// cout << "================================================ \n" <<  msgT << "\n=============================================\n";
 	        //std::lock_guard<std::mutex> guard(mt);//LZH
 			mut[2].lock();//LZH
 			Message.push( desc );
@@ -156,6 +171,7 @@ void TCPServer::accepted()//这里需要对队列进行加锁访问
 		so->id              = num_client;
 		so->ip              = inet_ntoa(clientAddress.sin_addr);
 		// newsockfd.push_back( so );
+		if(DEBUG)
 		cerr << "accept client[ id:" << so->id << 
 							" ip:" << so->ip << 
 						" handle:" << so->socket << " ]" << endl;

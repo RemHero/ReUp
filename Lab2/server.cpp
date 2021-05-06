@@ -9,16 +9,17 @@
 using namespace std;
 #define B 1
 
-int R=20;   //接受请求accepted()
-int R1=10;  //receive每次处理的最大线程数量
-int W=1;    //目前没用到
-int O1=10;  //取出任务的线程数量
+int R=1;   //接受请求accepted()
+int R1=1;  //receive每次处理的最大线程数量
+int W=30;    //目前没用到
+int O1=1;  //取出任务的线程数量
 int O2=1;   //处理线程个数
 
 sem_t ROsem;
 pthread_mutex_t mutex1;
 TCPServer tcp;
 ThreadPool po2;
+ThreadPool pw;
 bool flagproxy=false;
 string proxy;
 map<string,string> cacheforweb;
@@ -64,24 +65,27 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
         int f3=s.find("&",f1);
         //cout << "f3--------------\n" << f3 << endl;
         int f4=s.find("ID=",f2);
-        //cout << "f4--------------\n" << f4 << endl;
+        // cout << "f4--------------\n" << f4 << endl;
         if(f1!=-1 && f2!=-1 && f4!=-1){
             m.name=s.substr(f2+5,f3-f2-5);
             m.id=s.substr(f4+3);
             //cout << "name--------------\n" << m.name << endl;
-            //cout << "id--------------\n" << m.id << endl;
+            // cout << "id--------------------------------------------------------------------\n" << m.id << endl;
         }
     }
 }
 
-string sendCM(struct descript_socket *desc){
+string sendCM(void *arg){
+    struct descript_socket *desc =  (struct descript_socket*)(arg);
     Message m;//每次创建消耗时间
     string date;
+    // cout << "================================================ \n" <<  desc->message << "\n=============================================\n";
     parse(desc->message,m);
     // cout << "type " << m.type  << " path " << m.path << "--------------\n";
     // if(m.path=="/Post_show") cout << "YES\n";
     // cout << m.name << ' ' << m.id << endl;
     if(m.type=="GET" && m.path=="/index.html"){
+<<<<<<< Updated upstream
         date = "HTTP/1.1 200 OK\r\n";
 
         date += "Server: ReUp Server\n";
@@ -95,6 +99,12 @@ string sendCM(struct descript_socket *desc){
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }else if(m.type=="POST" && !m.name.empty() && !m.id.empty() && m.path=="/Post_show"){
+=======
+        date = "HTTP/1.1 200 OK\r\nServer: ReUp Server\nContent-type: text/html\nContent-length: 107\n\r\n<html><title>Get the ReUp</title><body bgcolor=ffffff>\n GOOD! \n<hr><em>HTTP Web server</em>\n</body></html>\n";
+    }else if(m.type=="POST" && !m.name.empty() && !m.id.empty() && m.path=="/Post_show"){//119
+        int lenT=m.name.length()+m.id.length();
+        string lengthT=to_string(lenT+119);
+>>>>>>> Stashed changes
         date = "HTTP/1.1 200 OK\r\n";
 
         date += "Server: ReUp Server\n";
@@ -120,7 +130,7 @@ string sendCM(struct descript_socket *desc){
 
         date += "<html><title>501 Not Implemented</title><body bgcolor=ffffff>\n";
         date += " Not Implemented\n";
-        date += "<p>Dose not implement this mrthod: "+m.type+"\n";
+        date += "<p>Dose not implement this method: "+m.type+"\n";
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
@@ -135,7 +145,7 @@ string sendCM(struct descript_socket *desc){
 
         date += "<html><title>501 Not Implemented</title><body bgcolor=ffffff>\n";
         date += " Not Implemented\n";
-        date += "<p>Dose not implement this mrthod: "+m.type+"\n";
+        date += "<p>Dose not implement this method: "+m.type+"\n";
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
@@ -150,7 +160,7 @@ string sendCM(struct descript_socket *desc){
 
         date += "<html><title>501 Not Implemented</title><body bgcolor=ffffff>\n";
         date += " Not Implemented\n";
-        date += "<p>Dose not implement this mrthod: "+m.type+"\n";
+        date += "<p>Dose not implement this method: "+m.type+"\n";
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
@@ -175,6 +185,10 @@ string sendCM(struct descript_socket *desc){
         }
         if(cacheforweb.find(m.path)!=cacheforweb.end()){//如果缓存里有，那么发送的包加上if-modified-since
             desc->message=desc->message.insert(desc->message.find_first_of('\n')+1,"If-Modified-Since: "+cacheforweb[m.path].substr(cacheforweb[m.path].find("Last-Modified: ")+15,cacheforweb[m.path].find_first_of('\n',cacheforweb[m.path].find("Last-Modified: "))-cacheforweb[m.path].find_first_of(' ',cacheforweb[m.path].find("Last-Mo"))));
+<<<<<<< Updated upstream
+=======
+            cout << "========================================================yes cache!\n";
+>>>>>>> Stashed changes
         }
         if(tcpc.Send(desc->message)==false){
             cerr<<"ERROR: send data to upstream server failed!\n";
@@ -193,6 +207,12 @@ string sendCM(struct descript_socket *desc){
             return date;
         }
         date=tcpc.receive();
+<<<<<<< Updated upstream
+=======
+        // cout << "========================================================NOOOOOOOO!\n";
+        //     cout << date << endl;
+        //     cout << "========================================================NOOOOOOO!\n";
+>>>>>>> Stashed changes
         if(date.find("Last-Modified: ")!=date.npos&&date.substr(9,3)=="200"){//如果返回的response中有modified信息，将其response存入缓存
             cacheforweb[m.path]=date;
         }
@@ -221,8 +241,22 @@ string sendCM(struct descript_socket *desc){
     return date;
 }
 
+void* LHZSEND(void *arg){
+    struct descript_socket *desc =  (struct descript_socket*)(arg);
+    // cout << "ok3==================================\n";
+    tcp.Send(desc,desc->message);
+    // cout << "ok4==================================\n";
+    // }
+    tcp.CloseConnection(desc);
+    // cout << "ok5==================================\n";
+    return 0;
+}
 
 void * send_client(void * m) {
+<<<<<<< Updated upstream
+=======
+    // pthread_detach(pthread_self());
+>>>>>>> Stashed changes
     // cerr << "-------------------begin send_client" << endl;
     struct descript_socket *desc =  (struct descript_socket*)(m);
     // while(1) {
@@ -230,15 +264,21 @@ void * send_client(void * m) {
         //     cerr << "Connessione chiusa: stop send_clients( id:" << desc->id << " ip:" << desc->ip << " )"<< endl;
         //     break;
         // }//这部分是对连接的持久性进行测试，过于高端，实验用不上，咱直接发送，鲁棒性永远滴神
-        string date;
-        date=sendCM(desc);
-        
+        // string date;
+        desc->message=sendCM(m);
+        // cout << "ok==================================\n";
+        pw.dispatch(LHZSEND,desc);
+        // cout << "ok2==================================\n";
             
-        tcp.Send(desc,date);
-    // }
-    tcp.CloseConnection(desc);
+    //     tcp.Send(desc,date);
+    // // }
+    // tcp.CloseConnection(desc);
     // cerr << "-------------------send_client" << endl;
     //pthread_exit(NULL);
+<<<<<<< Updated upstream
+=======
+    // pthread_exit(NULL);
+>>>>>>> Stashed changes
     return 0;
 }
 
@@ -256,11 +296,17 @@ void * received(void * m)//之后的优化可以考虑一次分配几个任务!!
                 if(!desc->enable_message_runtime)
                 {
                     desc->enable_message_runtime = true;
+                    if(DEBUG)
                     cout << "id:      " << desc->id      << endl
                      << "ip:      " << desc->ip      << endl
                      << "message: " << desc->message << endl
                      << "socket:  " << desc->socket  << endl
                      << "enable:  " << desc->enable_message_runtime << endl;
+<<<<<<< Updated upstream
+=======
+                    // pthread_t p;
+                    // pthread_create(&p, NULL, &send_client, (void *) desc);
+>>>>>>> Stashed changes
                     po2.dispatch(send_client,(void *) desc);
                 }
         }
@@ -273,6 +319,7 @@ void* LHZFUN(void *arg){
     //cerr << "-------------------1" << endl;
         tcp.accepted();
     }
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -328,9 +375,9 @@ int main(int argc, char **argv)
     std::signal(SIGINT, close_app);
     pthread_mutex_init(&mutex1,NULL);
     ThreadPool po1(O1);
-    ThreadPool pw(W);
     ThreadPool pr(R);
     po2.setNum(O2);
+    pw.setNum(W);
 	pr.run();po1.run();po2.run();pw.run();
     pthread_t msg;
     vector<int> opts = { SO_REUSEPORT, SO_REUSEADDR };
