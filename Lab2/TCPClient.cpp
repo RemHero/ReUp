@@ -74,8 +74,6 @@ string TCPClient::receive(int size)
 	    	// cout << "receive failed!" << endl;
 		return nullptr;
   	}
-<<<<<<< Updated upstream
-=======
 	// timeval tv_out;
 	// tv_out.tv_sec = 1;
     // tv_out.tv_usec = 0;
@@ -106,7 +104,6 @@ string TCPClient::receive(int size)
 	// 		pthread_exit(NULL);
 	// 	}
 	usleep(1);
->>>>>>> Stashed changes
 	buffer[size-1]='\0';
 	reply = buffer;
   	return reply;

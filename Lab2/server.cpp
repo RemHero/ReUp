@@ -85,26 +85,10 @@ string sendCM(void *arg){
     // if(m.path=="/Post_show") cout << "YES\n";
     // cout << m.name << ' ' << m.id << endl;
     if(m.type=="GET" && m.path=="/index.html"){
-<<<<<<< Updated upstream
-        date = "HTTP/1.1 200 OK\r\n";
-
-        date += "Server: ReUp Server\n";
-        date += "Content-type: text/html\n";
-        date += "Content-length: 107\n";
-
-        date += "\r\n";
-
-        date += "<html><title>Get the ReUp</title><body bgcolor=ffffff>\n";
-        date += " GOOD! \n";
-        date += "<hr><em>HTTP Web server</em>\n";
-        date += "</body></html>\n";
-    }else if(m.type=="POST" && !m.name.empty() && !m.id.empty() && m.path=="/Post_show"){
-=======
         date = "HTTP/1.1 200 OK\r\nServer: ReUp Server\nContent-type: text/html\nContent-length: 107\n\r\n<html><title>Get the ReUp</title><body bgcolor=ffffff>\n GOOD! \n<hr><em>HTTP Web server</em>\n</body></html>\n";
     }else if(m.type=="POST" && !m.name.empty() && !m.id.empty() && m.path=="/Post_show"){//119
         int lenT=m.name.length()+m.id.length();
         string lengthT=to_string(lenT+119);
->>>>>>> Stashed changes
         date = "HTTP/1.1 200 OK\r\n";
 
         date += "Server: ReUp Server\n";
@@ -185,10 +169,7 @@ string sendCM(void *arg){
         }
         if(cacheforweb.find(m.path)!=cacheforweb.end()){//如果缓存里有，那么发送的包加上if-modified-since
             desc->message=desc->message.insert(desc->message.find_first_of('\n')+1,"If-Modified-Since: "+cacheforweb[m.path].substr(cacheforweb[m.path].find("Last-Modified: ")+15,cacheforweb[m.path].find_first_of('\n',cacheforweb[m.path].find("Last-Modified: "))-cacheforweb[m.path].find_first_of(' ',cacheforweb[m.path].find("Last-Mo"))));
-<<<<<<< Updated upstream
-=======
             cout << "========================================================yes cache!\n";
->>>>>>> Stashed changes
         }
         if(tcpc.Send(desc->message)==false){
             cerr<<"ERROR: send data to upstream server failed!\n";
@@ -207,12 +188,9 @@ string sendCM(void *arg){
             return date;
         }
         date=tcpc.receive();
-<<<<<<< Updated upstream
-=======
         // cout << "========================================================NOOOOOOOO!\n";
         //     cout << date << endl;
         //     cout << "========================================================NOOOOOOO!\n";
->>>>>>> Stashed changes
         if(date.find("Last-Modified: ")!=date.npos&&date.substr(9,3)=="200"){//如果返回的response中有modified信息，将其response存入缓存
             cacheforweb[m.path]=date;
         }
@@ -253,10 +231,7 @@ void* LHZSEND(void *arg){
 }
 
 void * send_client(void * m) {
-<<<<<<< Updated upstream
-=======
     // pthread_detach(pthread_self());
->>>>>>> Stashed changes
     // cerr << "-------------------begin send_client" << endl;
     struct descript_socket *desc =  (struct descript_socket*)(m);
     // while(1) {
@@ -275,10 +250,7 @@ void * send_client(void * m) {
     // tcp.CloseConnection(desc);
     // cerr << "-------------------send_client" << endl;
     //pthread_exit(NULL);
-<<<<<<< Updated upstream
-=======
     // pthread_exit(NULL);
->>>>>>> Stashed changes
     return 0;
 }
 
@@ -302,11 +274,8 @@ void * received(void * m)//之后的优化可以考虑一次分配几个任务!!
                      << "message: " << desc->message << endl
                      << "socket:  " << desc->socket  << endl
                      << "enable:  " << desc->enable_message_runtime << endl;
-<<<<<<< Updated upstream
-=======
                     // pthread_t p;
                     // pthread_create(&p, NULL, &send_client, (void *) desc);
->>>>>>> Stashed changes
                     po2.dispatch(send_client,(void *) desc);
                 }
         }
