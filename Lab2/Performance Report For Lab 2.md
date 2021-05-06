@@ -54,13 +54,13 @@
 
 ##### 测试一 不同的计算机环境上运行服务器时，不同线程数的服务器
 
-![test1](F:\作业\大三下\云计算\实验2\test1)
+![test1](https://github.com/RemHero/ReUp/blob/main/image/test1.jpg)
 
 由于虚拟机的缘故，服务器每秒可以处理HTTP请求数有很大的差异，但是在不同的并发条件下似乎对性能没有太多的影响，即每秒钟处理的请求数基本不变，与机器的配置有关。
 
 ##### 测试二 采用线程池且不同的线程数量下，不同并发测得的处理效率
 
-<img src="F:\作业\大三下\云计算\实验2\test2" alt="test2" style="zoom: 80%;" />
+![test2](https://github.com/RemHero/ReUp/blob/main/image/test2.jpg)
 
 ###### 分析
 
@@ -72,7 +72,7 @@
 
 ##### 测试三 代理模式下不同的计算机环境上运行服务器时，不同线程数
 
-<img src="F:\作业\大三下\云计算\实验2\test3" alt="test3" style="zoom:80%;" />
+![test3](https://github.com/RemHero/ReUp/blob/main/image/test3.jpg)
 
 ###### 分析
 
