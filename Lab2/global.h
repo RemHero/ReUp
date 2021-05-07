@@ -8,7 +8,7 @@
 #include <pthread.h>
 //每次接受的信息最大长度
 #define MAXT 1024
-#define DEBUG false
+#define DEBUG true
 
 extern int R;
 extern int R1;

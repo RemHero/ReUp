@@ -22,6 +22,7 @@ ThreadPool po2;
 ThreadPool pw;
 bool flagproxy=false;
 string proxy;
+int destport=80;
 map<string,string> cacheforweb;
 
 void close_app(int s) {//CTRL C 调用，终止所有线程并退出
@@ -45,7 +46,22 @@ void parse(string s,Message &m){//这里的解析是否会成为性能瓶颈？�
     m.path=s.substr(beg+1,end-beg-1);
     if(m.path.find("http://")!=m.path.npos){
         m.path=m.path.substr(m.path.find("http://")+7);//这里默认是http://www.baidu.com/的格式
-        m.path=m.path.substr(0,m.path.length()-1);
+        if(m.path.find("/")!=m.path.npos){
+            m.path=m.path.substr(0,m.path.find("/"));
+        }
+        if(m.path.find(":")!=m.path.npos){
+            m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
+            m.path=m.path.substr(0,m.path.find(":"));
+        }
+        else{
+            m.port=80;
+        }
+    }
+    else if(m.path.find("https://")!=m.path.npos){
+        m.path=m.path.substr(m.path.find("https://")+8);//这里默认是http://www.baidu.com/的格式
+        if(m.path.find("/")!=m.path.npos){
+            m.path=m.path.substr(0,m.path.find("/"));
+        }
         if(m.path.find(":")!=m.path.npos){
             m.port=stoi(m.path.substr(m.path.find(":")+1,m.path.length()));
         }
@@ -148,10 +164,10 @@ string sendCM(void *arg){
         date += "<hr><em>HTTP Web server</em>\n";
         date += "</body></html>\n";
     }
-    else if(m.type=="GET" && m.path==proxy){//使用代理
+    else if(m.type=="GET" && m.path==proxy && destport==m.port){//使用代理
         cerr<<"Using proxy: "<<m.path<<endl;
         TCPClient tcpc;
-        if(tcpc.setup(m.path,m.port)==false){
+        if(tcpc.setup(m.path,destport)==false){///////////////////////////////////////////////////////////////////////////////////////////
             cerr<<"ERROR: create tcp to upstream server failed!\n";
             date = "HTTP/1.1 404 Not Found\r\n";
 
@@ -313,6 +329,26 @@ int main(int argc, char **argv)
             i=i+1;
             flagproxy=true;
             proxy=argv[i];
+            if(proxy.find("http://")!=proxy.npos){
+                proxy=proxy.substr(proxy.find("http://")+7);//这里默认是http://www.baidu.com/的格式
+                if(proxy.find("/")!=proxy.npos){
+                    proxy=proxy.substr(0,proxy.find("/"));
+                }
+                if(proxy.find(":")!=proxy.npos){
+                    destport=stoi(proxy.substr(proxy.find(":")+1,proxy.length()));
+                    proxy=proxy.substr(0,proxy.find(":"));
+                }
+            }
+            else if(proxy.find("https://")!=proxy.npos){
+                proxy=proxy.substr(proxy.find("https://")+8);//这里默认是http://www.baidu.com/的格式
+                if(proxy.find("/")!=proxy.npos){
+                    proxy=proxy.substr(0,proxy.find("/"));
+                }
+                if(proxy.find(":")!=proxy.npos){
+                    destport=stoi(proxy.substr(proxy.find(":")+1,proxy.length()));
+                    proxy=proxy.substr(0,proxy.find(":"));
+                }
+            }
         }
         else{
             cerr << "Usage: ./httpserver \n      --ip (ip) \n      --port (port) \n      [--number-thread (thread number)] \n      [--proxy (proxy)]" << endl;
@@ -330,7 +366,8 @@ int main(int argc, char **argv)
     else{
         cerr<<"[httpserver: port: "<<port<<" thread number: "<<O2<<" ";
         if(flagproxy==true){
-            cout<<"use proxy: "<<proxy<<' ';
+            cout<<"proxy: "<<proxy<<' ';
+            cout<<"destport: "<<destport<<' ';
         }
         cerr  <<"]\n";
     }
