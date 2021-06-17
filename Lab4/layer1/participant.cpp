@@ -91,7 +91,7 @@ void Participant::prepareAll(string op,string val){
     posi=to_string(log.getNewposi());
     index=to_string(log.getNewLogIndex());
     for(int i=0;i<l;i++){
-        ans="[PRE]/add:"+add+"/port:"+to_string(port)+"/posi:"+posi+"/index:"+index+"/op:"+op+"/res:"+val;
+        ans="[PRE]/add:"+add+"/port:"+to_string(port)+"/posi:"+posi+"/index:"+index+"/op:"+op+"/res:"+val+"/";
         msgSendQueue.push(make_pair(follower_info_list[i],ans));
         sem_post(&psem[2]);
     }
@@ -138,7 +138,9 @@ int Participant::performComm(){
             des.add=com.add,des.port=atoi(com.port.c_str());
             if(com.type=="[CLIENT]"){
                 if(pstate!=LEADER){
+                    des.add=LEA.add,des.port=LEA.port;
                     ans=com.reCmd;
+                    cout << "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE " << ans << endl;
                     goto LASTL;
                 }else{
                     Client.add=com.add;Client.port=8010;
@@ -146,8 +148,8 @@ int Participant::performComm(){
                     dataState=LOG_PRE;
 
                     prepareAll(com.op,com.res);
-                    std::thread ppre(&Participant::preTimer,this,3);
-                    ppre.detach();
+                    // std::thread ppre(&Participant::preTimer,this,5);
+                    // ppre.detach();
                     
                     continue;
                 }
@@ -201,15 +203,16 @@ int Participant::performComm(){
             else if(pstate==FOLLOWER || pstate==CANDIDATE || pstate==LEADER){//if the node'state is follower
                 printf("--------------------part.113\n");
                 if(com.type=="[HEART]"){
-                    if(atoi(com.res.c_str())>=round && atoi(com.pos.c_str())>=log.getNewposi() && atoi(com.index.c_str())>=log.getNewLogIndex()){
-                        pstate=FOLLOWER;
-                        timeOut=0;
-                        round=atoi(com.res.c_str());
-                        LEA.add=com.add;
-                        LEA.port=atoi(com.port.c_str());
-                    }else{
-                        continue;
-                    }
+                    if(com.res.find("{")==string::npos)
+                        if(atoi(com.res.c_str())>=round && atoi(com.pos.c_str())>=log.getNewposi() && atoi(com.index.c_str())>=log.getNewLogIndex()){
+                            pstate=FOLLOWER;
+                            timeOut=0;
+                            round=atoi(com.res.c_str());
+                            LEA.add=com.add;
+                            LEA.port=atoi(com.port.c_str());
+                        }else{
+                            continue;
+                        }
                     // for(int i=0;i<500;i++)
                     //     cout << "198 ============= folower\n";
                     printf("--------------------part.115\n");
@@ -254,15 +257,16 @@ int Participant::performComm(){
                                     printf("--------------------part.227\n");    
                                     string ts;
                                     flag=log.commitLog(ts);
+                                    cout << "[part 260 result] " << log.getLog(log.getNewposi()-1).op.operation << ' ' << log.getLog(log.getNewposi()-1).op.value << endl; 
                                     if(!flag)
-                                        printf("[ERROR] recver or commit wrong <part.cpp 73>\n");
+                                        printf("[ERROR] recver or commit wrong <part.cpp 285>\n");
                                 }
                             }
                         }
                     }
                     ans="[HEARTRE]";
                 }else if(com.type=="[PRE]"){
-                    flag=log.writeLog(log.createLog(atoi(com.index.c_str()),com.op,com.value));
+                    flag=log.writeLog(log.createLog(atoi(com.index.c_str()),com.op,com.res));
                     posi=to_string(log.getNewposi());
                     index=to_string(log.getNewLogIndex());
                     ans="[PRERE]";
@@ -378,9 +382,9 @@ int Participant::performComm(){
                                 if(!ts.empty())
                                     ans="[CLENTRE]/add:"+add+"/port:"+to_string(port)+"/res:ok"+"/res:"+ts+"/";
                                 else
-                                    ans="[CLENTRE]/add:"+add+"/port:"+to_string(port)+"/res:ok"+"/res:ok/";
+                                    ans="[CLENTRE]/add:"+add+"/port:"+to_string(port)+"/res:ok/";
                             }
-                            else ans="[CLENTRE]/add:"+add+"/port:"+to_string(port)+"/res:ok"+"/res:error/";
+                            else ans="[CLENTRE]/add:"+add+"/port:"+to_string(port)+"/res:error/";
                         }
                     }
                     else{
@@ -422,7 +426,7 @@ int Participant::PCommandParser(){
             printf("--------------------part.264\n");
             cmd=cmdQueue.front();
             printf("%s\n",cmd.c_str());
-            printf("--------------------part.356\n");
+            printf("--------------------part.428\n");
             cmdQueue.pop();
             printf("--------------------part.267\n");
             com=P.commandParser(cmd);

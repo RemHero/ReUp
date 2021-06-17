@@ -30,6 +30,7 @@ int KVDB::delValue(string key,string oldval){
 
 int KVDB::getValue(string key,string &value){
     if(DB.find(key)!=DB.end()){
+        cout << "[DB33]get okokokokokokokokokokokokokokokokokokokokokokokok\n";
         value=DB[key];
         return OK;
     }

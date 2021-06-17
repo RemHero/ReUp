@@ -69,7 +69,9 @@ Log Logger::getLog(int posi){
 bool Logger::writeLog(Log _l){
     log.push_back(_l);
     posi++;
+    cout << "\n[log 71] " << log[posi-1].op.value << endl;
     newLogIndex=_l.LogIndex;
+    log[posi-1].state=LOG_PRE;
     return true;
 }
 
@@ -84,6 +86,7 @@ bool Logger::commitLog(string &ans){
     }
     string oper=log[posi-1].op.operation;
     if(oper=="GET"){
+        cout << "get get get get get get get get get get get get get get get get " << log[posi-1].op.value << endl;
         if(db.getValue(log[posi-1].op.value,ans)!=0){
             return false;
         }
@@ -106,6 +109,7 @@ bool Logger::commitLog(string &ans){
     if(oper=="SET"){
         printf("--------------------logger.96\n");
         string _key,_val,oldval;
+        cout << "[log 111] " << log[posi-1].op.value << endl;
         parseSetVal(log[posi-1].op.value,_key,_val);
         cout << "sadfasdf: " << _key << ' ' << _val << endl;
         if(db.setValue(_key,_val,oldval)!=0){
@@ -115,6 +119,7 @@ bool Logger::commitLog(string &ans){
             log[posi-1].op.oldVal=oldval;
         }
     }
+    log[posi-1].state=LOG_COMMIT;
     printf("--------------------logger.113\n");
     return true;
 }
